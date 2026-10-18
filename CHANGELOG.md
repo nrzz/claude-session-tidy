@@ -2,6 +2,10 @@
 
 All notable changes to claude-session-tidy are written here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+- Add `list --since <days>` to filter sessions by their last activity in the given number of days. It combines with the other list filters, runs before `--limit`, and reports matching counts in text, markdown and JSON.
+
 ## [1.2.0] - 2026-10-18
 
 - Add `list --title <text>` for literal, case-insensitive title searches before limits, combined with project, sort and due filters. Text and markdown headers show the filter and counts; filtered JSON includes `title` and `matched`. Empty search text is rejected without reading sessions.
