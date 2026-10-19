@@ -22,7 +22,7 @@ import { REPO_URL, VERSION } from "./version.mjs";
 // ---------------------------------------------------------------------------------------------
 
 export const COMMANDS = {
-  list: { run: cmdList, bool: ["all", "json", "markdown"], value: ["project", "sort", "limit", "due", "title", "since"] },
+  list: { run: cmdList, bool: ["all", "json", "markdown"], value: ["project", "sort", "limit", "due", "title", "since", "idle"] },
   delete: { run: cmdDelete, bool: ["dry-run", "json"], value: [] },
   restore: { run: cmdRestore, bool: ["dry-run", "json"], value: [] },
   keep: { run: cmdKeep, bool: ["dry-run", "json"], value: [] },
@@ -103,6 +103,7 @@ async function cmdList(args, ctx) {
   const title = args.title === undefined ? undefined : String(args.title);
   if (title !== undefined && !title.trim()) fail("--title needs non-empty text.");
   const since = args.since === undefined ? undefined : wholeNumber(args.since, "--since");
+  const idle = args.idle === undefined ? undefined : wholeNumber(args.idle, "--idle");
   const scope = scopeOf(args, ctx);
   const { env, now } = ctx;
   const retention = readRetention(env, { projectDir: scope.dir });
@@ -125,6 +126,10 @@ async function cmdList(args, ctx) {
     const cutoff = now - since * DAY;
     matching = matching.filter((s) => s.lastActiveMs >= cutoff && s.lastActiveMs <= now);
   }
+  if (idle !== undefined) {
+    const cutoff = now - idle * DAY;
+    matching = matching.filter((s) => s.lastActiveMs < cutoff);
+  }
   const rows = matching.slice(0, limit);
   const shorts = shortIds(sessions.map((s) => s.id));
   for (const r of rows) {
@@ -141,7 +146,7 @@ async function cmdList(args, ctx) {
   // Kept sessions that are not in this table may sit in another project; only those missing everywhere are reported.
   const keptMissing = scope.all ? everKept.filter((id) => !present.has(id)) : [];
   const model = {
-    scope, sort, retention, rows, due, title, since, matched: matching.length, shown: rows.length, total: sessions.length,
+    scope, sort, retention, rows, due, title, since, idle, matched: matching.length, shown: rows.length, total: sessions.length,
     totalBytes: measured ? sessions.reduce((n, s) => n + (s.totalBytes ?? 0), 0) : null,
     keptCount: scope.all ? everKept.length : keptHere, keptMissing, hook, trash: trashSummary(env),
   };
@@ -153,14 +158,15 @@ async function cmdList(args, ctx) {
       hook: { installed: hook.installed, plugin: hook.plugin },
       total: model.total, shown: model.shown, bytes: model.totalBytes, keptMissing,
       ...(title === undefined ? {} : { title }),
-      ...(title === undefined && since === undefined ? {} : { matched: model.matched }),
+      ...(title === undefined && since === undefined && idle === undefined ? {} : { matched: model.matched }),
       ...(since === undefined ? {} : { since }),
+      ...(idle === undefined ? {} : { idle }),
       sessions: rows.map(jsonRow),
     }, null, 2)}\n`);
     return 0;
   }
   if (args.markdown) { ctx.say(renderListMarkdown(model)); return 0; }
-  if (!rows.length && due === undefined && title === undefined && since === undefined) {
+  if (!rows.length && due === undefined && title === undefined && since === undefined && idle === undefined) {
     ctx.say(`No Claude Code sessions found for ${scope.label} (looked in ${projectsDir(env)}).`);
     if (!scope.all) ctx.say(ctx.c.dim("Use --all to list every project's sessions."));
     return 0;
@@ -324,7 +330,7 @@ async function cmdUninstall(args, ctx) {
 const helpText = (c) => `${c.bold("claude-session-tidy")} ${VERSION}: list, delete, keep and restore your Claude Code sessions.
 
 ${c.bold("Look")}
-  claude-session-tidy list [--all | --project <dir>] [--sort age|size|prompts] [--due <days>] [--title <text>] [--since <days>] [--limit <n>] [--json | --markdown]
+  claude-session-tidy list [--all | --project <dir>] [--sort age|size|prompts] [--due <days>] [--title <text>] [--since <days>] [--idle <days>] [--limit <n>] [--json | --markdown]
 
 ${c.bold("Delete, with a way back")}
   claude-session-tidy delete <id...> [--dry-run] [--json]      move sessions to the trash

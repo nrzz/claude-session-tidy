@@ -2,6 +2,10 @@
 
 All notable changes to claude-session-tidy are written here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+- Add `list --idle <days>`: the sessions whose last activity is older than N days, counted from now by the newest timestamp in each transcript rather than the file's modification time. It filters before `--limit`, combines with `--all`, `--project`, `--sort`, `--due`, `--title` and `--since` (for example, `--since 30 --idle 7` lists sessions active between 7 and 30 days ago), and works in text, JSON and markdown reports. Headers show matching, shown and total counts; JSON adds `idle` and `matched` only when the filter is used. No matches is a successful empty report; a value that is not a whole number of 1 or more is a usage error with exit code 1.
+
 ## [1.3.0] - 2026-10-19
 
 - Add `list --since <days>`: the sessions whose last activity is within the last N days, by the newest timestamp in each transcript rather than the file's modification time, counted from now. It filters before `--limit`, combines with `--all`, `--project`, `--sort`, `--due` and `--title`, and works in text, JSON and markdown reports. Headers show matching, shown and total counts; JSON adds `since` and `matched` only when the filter is used. No matches is a successful empty report; a value that is not a whole number of 1 or more is a usage error with exit code 1.
@@ -28,6 +32,7 @@ All notable changes to claude-session-tidy are written here. The format follows 
 - A plugin `session-tidy` with one user-only skill, `/session-tidy:list`, and the same hook.
 - Checked against Claude Code 2.1.295: the cleanup goes by a file's modification time and not the timestamps inside it; it skips sessions started by Claude Desktop; it takes a session's folder along but leaves `file-history/`, `session-env/`, `uploads/` and `tasks/` behind; a touched session survives it; a deleted session cannot be resumed and a restored one resumes with its whole history. The checks run against the real binary in CI (`E2E_CLAUDE`), weekly.
 
+[Unreleased]: https://github.com/nrzz/claude-session-tidy/compare/v1.3.0...HEAD
 [1.3.0]: https://github.com/nrzz/claude-session-tidy/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/nrzz/claude-session-tidy/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/nrzz/claude-session-tidy/compare/v1.0.1...v1.1.0
