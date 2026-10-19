@@ -45,9 +45,17 @@ function header(m, markdown = false) {
   }
   if (m.since !== undefined) filters.push(`with activity in the last ${plural(m.since, "day")}`);
   if (m.idle !== undefined) filters.push(`idle for ${plural(m.idle, "day")}`);
-  const count = filters.length
-    ? `${m.shown < m.matched ? `${m.shown} of ${m.matched}` : m.shown} ${filters.join(", ")}, of ${m.total}`
-    : (m.shown < m.total ? `${m.shown} of ${m.total}` : `${m.total}`);
+  let count;
+  if (m.kept) {
+    const shownPart = m.shown < m.matched ? `${m.shown} of ${m.matched}` : m.shown;
+    count = filters.length
+      ? `${shownPart} kept, ${filters.join(", ")}, of ${m.total}`
+      : `${shownPart} kept, of ${m.total}`;
+  } else if (filters.length) {
+    count = `${m.shown < m.matched ? `${m.shown} of ${m.matched}` : m.shown} ${filters.join(", ")}, of ${m.total}`;
+  } else {
+    count = m.shown < m.total ? `${m.shown} of ${m.total}` : `${m.total}`;
+  }
   const where = m.scope.all ? "all projects" : m.scope.label;
   return { title: `Sessions in ${where} (${count}, ${SORT_LABEL[m.sort]})`, cleanup: `Cleanup: ${describeRetention(m.retention)}.` };
 }
