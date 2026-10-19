@@ -61,7 +61,7 @@ Then type `/session-tidy:list`. It lists the current project's 15 newest session
 ## Use
 
 ```text
-claude-session-tidy list [--all | --project <dir>] [--sort age|size|prompts] [--due <days>] [--title <text>] [--since <days>] [--limit <n>] [--json | --markdown]
+claude-session-tidy list [--all | --project <dir>] [--sort age|size|prompts] [--due <days>] [--title <text>] [--since <days>] [--idle <days>] [--limit <n>] [--json | --markdown]
 claude-session-tidy delete <id...> [--dry-run] [--json]
 claude-session-tidy restore [<id>] [--dry-run] [--json]
 claude-session-tidy keep <id...> [--dry-run] [--json]
@@ -99,6 +99,7 @@ Cleanup: 30 days without a change (cleanupPeriodDays is not set, so Claude Code'
 - `--title stripe` finds that text within the selected title, case-insensitively and literally (not as a regular expression). It filters before `--limit`, combines with `--all`, `--project`, `--sort` and `--due`, and works in text, JSON and markdown reports. Headers show matching, shown and total counts; JSON adds `title` and `matched` only when the filter is used. No matches is a successful empty report. Empty or whitespace-only text and a missing argument are usage errors with exit code 1.
 - `--due 7` shows sessions whose cleanup is due within the next 7 days, including sessions already `due` and kept sessions. It excludes `exempt` and `paused` sessions, filters before `--limit`, and works with `--all`, `--json` and `--markdown`. The number of days must be a whole number of 1 or more.
 - `--since 7` keeps sessions whose **last activity** was within the last 7 days, using the newest timestamp in each transcript rather than the transcript file's modification time. It filters before `--limit` and combines with `--all`, `--project`, `--sort`, `--due` and `--title`. Text and markdown headers show the matched and shown counts; JSON adds `since` and `matched` only when the filter is used. No matches is a successful empty report. The number of days must be a whole number of 1 or more.
+- `--idle 14` keeps sessions with **no activity** in the last 14 days, counted from now by each transcript's newest timestamp. It filters before `--limit` and combines with `--all`, `--project`, `--sort`, `--due`, `--title` and `--since` (for example, `--since 30 --idle 7` lists sessions active between 7 and 30 days ago). Text and markdown headers show the matched and shown counts; JSON adds `idle` and `matched` only when the filter is used. No matches is a successful empty report. The number of days must be a whole number of 1 or more.
 - `--sort size` puts the biggest first and `--sort prompts` the longest conversations; `--limit 15` shows 15. `--markdown` prints the compact table the skill uses (at most 40 rows).
 
 ### delete and restore
