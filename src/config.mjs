@@ -18,6 +18,23 @@ export function homeDir(env = process.env) {
 export function claudeDir(env = process.env) {
   return env.CLAUDE_CONFIG_DIR ? path.resolve(env.CLAUDE_CONFIG_DIR) : path.join(homeDir(env), ".claude");
 }
+
+// A path formatted for display: the home folder is replaced by ~, and separators are forward slashes.
+export function displayPath(p, env = process.env) {
+  if (!p) return "";
+  const home = homeDir(env);
+  const pPosix = String(p).replace(/\\/g, "/");
+  const homePosix = String(home).replace(/\\/g, "/");
+  if (pPosix === homePosix || (IS_WIN && pPosix.toLowerCase() === homePosix.toLowerCase())) {
+    return "~";
+  }
+  const prefix = homePosix.endsWith("/") ? homePosix : `${homePosix}/`;
+  if (pPosix.startsWith(prefix) || (IS_WIN && pPosix.toLowerCase().startsWith(prefix.toLowerCase()))) {
+    return `~/${pPosix.slice(prefix.length)}`;
+  }
+  return pPosix;
+}
+
 export const projectsDir = (env = process.env) => path.join(claudeDir(env), "projects");
 export const tidyDir = (env = process.env) => path.join(claudeDir(env), "session-tidy");
 export const trashRoot = (env = process.env) => path.join(tidyDir(env), "trash");

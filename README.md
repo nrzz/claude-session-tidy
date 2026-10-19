@@ -62,6 +62,7 @@ Then type `/session-tidy:list`. It lists the current project's 15 newest session
 
 ```text
 claude-session-tidy list [--all | --project <dir>] [--sort age|size|prompts] [--due <days>] [--title <text>] [--since <days>] [--idle <days>] [--kept] [--limit <n>] [--json | --markdown]
+claude-session-tidy show <id> [--json]
 claude-session-tidy rename <id> <title> [--dry-run] [--json]
 claude-session-tidy delete <id...> [--dry-run] [--json]
 claude-session-tidy restore [<id>] [--dry-run] [--json]
@@ -103,6 +104,24 @@ Cleanup: 30 days without a change (cleanupPeriodDays is not set, so Claude Code'
 - `--idle 14` keeps sessions with **no activity** in the last 14 days, counted from now by each transcript's newest timestamp. It filters before `--limit` and combines with `--all`, `--project`, `--sort`, `--due`, `--title` and `--since` (for example, `--since 30 --idle 7` lists sessions active between 7 and 30 days ago). Text and markdown headers show the matched and shown counts; JSON adds `idle` and `matched` only when the filter is used. No matches is a successful empty report. The number of days must be a whole number of 1 or more.
 - `--kept` shows only the sessions that are on the keep list (`keep.json`). It filters before `--limit` and combines with `--all`, `--project`, `--sort`, `--due`, `--title`, `--since` and `--idle`. Text and markdown headers show the matched and shown counts; JSON adds `kept: true` and `matched` only when the filter is used. No matches is a successful empty report. When the keep list is invalid, `--kept` is refused with an error.
 - `--sort size` puts the biggest first and `--sort prompts` the longest conversations; `--limit 15` shows 15. `--markdown` prints the compact table the skill uses (at most 40 rows).
+
+### show
+
+```text
+$ claude-session-tidy show 7ec217ec
+7ec217ec-1a2b-4c3d-8e4f-5a6b7c8d9e0f   Stripe webhooks, second attempt
+Project    ~/code/shop
+Started    2026-10-12 09:14   Last activity  2026-10-18 17:02   Prompts  14
+Size       1.9 MB: transcript 1.2 MB, tool results 540 KB (31 files), subagents 120 KB (2), file history 48 KB (6)
+Kept       yes, since 2026-10-15 (refresh due 2026-11-13)
+Cleanup    scheduled for 2026-11-17 (30 days without a change; cleanupPeriodDays is not set)
+Files
+  ~/.claude/projects/-home-me-code-shop/7ec217ec-1a2b-4c3d-8e4f-5a6b7c8d9e0f.jsonl
+  ~/.claude/projects/-home-me-code-shop/7ec217ec-1a2b-4c3d-8e4f-5a6b7c8d9e0f/   (33 files)
+  ~/.claude/file-history/7ec217ec-1a2b-4c3d-8e4f-5a6b7c8d9e0f/   (6 files)
+```
+
+`show` prints everything `list` knows about one session, together with the list of files and folders that belong to it (the ones `delete` would move), each with its file count or size. `<id>` is a session id or an unambiguous prefix. `--json` gives one document (`{ ok, id, title, project, firstActivity, lastActivity, prompts, size, kept, sweep, files }`).
 
 ### rename
 
