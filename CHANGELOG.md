@@ -4,7 +4,10 @@ All notable changes to claude-session-tidy are written here. The format follows 
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-10-19
+
 - Add `list --kept`: only the sessions on the keep list (`keep.json`). It filters before `--limit` and combines with `--all`, `--project`, `--sort`, `--due`, `--title`, `--since` and `--idle`. Text and markdown headers show matching, shown and total counts (`(3 kept, of 41)`, or with other filters `(2 kept, matching "stripe", of 41)`); JSON adds `kept: true` and `matched` only when the filter is used. No matches is a successful empty report. When the keep list is invalid, `--kept` is refused with an error (exit 1).
+- Contributed by [@yoreva-01](https://github.com/yoreva-01) in [#13](https://github.com/nrzz/claude-session-tidy/pull/13), for the good first issue [#12](https://github.com/nrzz/claude-session-tidy/issues/12).
 
 ## [1.4.0] - 2026-10-19
 
@@ -38,7 +41,8 @@ All notable changes to claude-session-tidy are written here. The format follows 
 - A plugin `session-tidy` with one user-only skill, `/session-tidy:list`, and the same hook.
 - Checked against Claude Code 2.1.295: the cleanup goes by a file's modification time and not the timestamps inside it; it skips sessions started by Claude Desktop; it takes a session's folder along but leaves `file-history/`, `session-env/`, `uploads/` and `tasks/` behind; a touched session survives it; a deleted session cannot be resumed and a restored one resumes with its whole history. The checks run against the real binary in CI (`E2E_CLAUDE`), weekly.
 
-[Unreleased]: https://github.com/nrzz/claude-session-tidy/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/nrzz/claude-session-tidy/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/nrzz/claude-session-tidy/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/nrzz/claude-session-tidy/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/nrzz/claude-session-tidy/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/nrzz/claude-session-tidy/compare/v1.1.0...v1.2.0
