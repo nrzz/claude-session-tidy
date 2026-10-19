@@ -2,9 +2,10 @@
 
 All notable changes to claude-session-tidy are written here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.3.0] - 2026-10-19
 
-- Add `list --since <days>` to filter sessions by their last activity in the given number of days. It combines with the other list filters, runs before `--limit`, and reports matching counts in text, markdown and JSON.
+- Add `list --since <days>`: the sessions whose last activity is within the last N days, by the newest timestamp in each transcript rather than the file's modification time, counted from now. It filters before `--limit`, combines with `--all`, `--project`, `--sort`, `--due` and `--title`, and works in text, JSON and markdown reports. Headers show matching, shown and total counts; JSON adds `since` and `matched` only when the filter is used. No matches is a successful empty report; a value that is not a whole number of 1 or more is a usage error with exit code 1.
+- Contributed by [@yoreva-01](https://github.com/yoreva-01) in [#7](https://github.com/nrzz/claude-session-tidy/pull/7), for the good first issue [#6](https://github.com/nrzz/claude-session-tidy/issues/6), with a review by [@Dcastroro](https://github.com/Dcastroro) that kept the real-CLI test from ageing out.
 
 ## [1.2.0] - 2026-10-18
 
@@ -27,6 +28,7 @@ All notable changes to claude-session-tidy are written here. The format follows 
 - A plugin `session-tidy` with one user-only skill, `/session-tidy:list`, and the same hook.
 - Checked against Claude Code 2.1.295: the cleanup goes by a file's modification time and not the timestamps inside it; it skips sessions started by Claude Desktop; it takes a session's folder along but leaves `file-history/`, `session-env/`, `uploads/` and `tasks/` behind; a touched session survives it; a deleted session cannot be resumed and a restored one resumes with its whole history. The checks run against the real binary in CI (`E2E_CLAUDE`), weekly.
 
+[1.3.0]: https://github.com/nrzz/claude-session-tidy/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/nrzz/claude-session-tidy/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/nrzz/claude-session-tidy/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/nrzz/claude-session-tidy/compare/v1.0.0...v1.0.1
