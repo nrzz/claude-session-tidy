@@ -5,6 +5,7 @@ All notable changes to claude-session-tidy are written here. The format follows 
 ## [Unreleased]
 
 - Add `list --idle <days>`: the sessions whose last activity is older than N days, counted from now by the newest timestamp in each transcript rather than the file's modification time. It filters before `--limit`, combines with `--all`, `--project`, `--sort`, `--due`, `--title` and `--since` (for example, `--since 30 --idle 7` lists sessions active between 7 and 30 days ago), and works in text, JSON and markdown reports. Headers show matching, shown and total counts; JSON adds `idle` and `matched` only when the filter is used. No matches is a successful empty report; a value that is not a whole number of 1 or more is a usage error with exit code 1.
+- Add `rename <id> <title>`: set a session's title from outside Claude Code, writing both the `custom-title` transcript record and `custom-title.json` in the session's folder, and updating `sessions-index.json` when present. Supports `--dry-run` and `--json`.
 
 ## [1.3.0] - 2026-10-19
 

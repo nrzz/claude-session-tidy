@@ -101,3 +101,46 @@ test("claude --continue picks the session with the newest file time, not the new
     assert.ok(!sent.includes("MARKER-A"));
   } finally { await api.close(); }
 });
+
+test("rename sets the session title seen by list and creates custom-title files", { skip: skip(), timeout: 240000 }, async () => {
+  const sb = sandbox("rename");
+  const api = await fakeApi();
+  const first = await runClaude(sb, api, ["-p", "PROMPT-ONE initialize session", "--session-id", ID, "--output-format", "json"]);
+  assert.equal(first.code, 0, first.err);
+
+  const before = JSON.parse(sb.tidy(["list", "--json"]).out);
+  assert.equal(before.sessions[0].id, ID);
+  assert.match(before.sessions[0].title, /^PROMPT-ONE initialize session/);
+
+  // Rename with dry-run: nothing changes
+  const dry = sb.tidy(["rename", ID.slice(0, 8), "Renamed Test Session", "--dry-run", "--json"]);
+  assert.equal(dry.code, 0, dry.all);
+  assert.equal(JSON.parse(dry.out).dryRun, true);
+  assert.equal(JSON.parse(dry.out).title, "Renamed Test Session");
+
+  // Verify list still shows original title
+  const mid = JSON.parse(sb.tidy(["list", "--json"]).out);
+  assert.match(mid.sessions[0].title, /^PROMPT-ONE initialize session/);
+
+  // Perform actual rename
+  const res = sb.tidy(["rename", ID.slice(0, 8), "Renamed Test Session", "--json"]);
+  assert.equal(res.code, 0, res.all);
+  assert.equal(JSON.parse(res.out).ok, true);
+  assert.equal(JSON.parse(res.out).title, "Renamed Test Session");
+
+  // list now shows the new title
+  const after = JSON.parse(sb.tidy(["list", "--json"]).out);
+  assert.equal(after.sessions[0].title, "Renamed Test Session");
+
+  // Verify custom-title.json exists and has the new title
+  const titleFile = path.join(sb.proj, ID, "custom-title.json");
+  assert.ok(fs.existsSync(titleFile));
+  assert.equal(JSON.parse(fs.readFileSync(titleFile, "utf8")).customTitle, "Renamed Test Session");
+
+  // Verify custom-title entry in transcript
+  const transcript = fs.readFileSync(path.join(sb.proj, `${ID}.jsonl`), "utf8");
+  assert.ok(transcript.includes('"type":"custom-title"'));
+  assert.ok(transcript.includes('"customTitle":"Renamed Test Session"'));
+
+  await api.close();
+});

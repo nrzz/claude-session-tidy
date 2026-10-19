@@ -62,6 +62,7 @@ Then type `/session-tidy:list`. It lists the current project's 15 newest session
 
 ```text
 claude-session-tidy list [--all | --project <dir>] [--sort age|size|prompts] [--due <days>] [--title <text>] [--since <days>] [--idle <days>] [--limit <n>] [--json | --markdown]
+claude-session-tidy rename <id> <title> [--dry-run] [--json]
 claude-session-tidy delete <id...> [--dry-run] [--json]
 claude-session-tidy restore [<id>] [--dry-run] [--json]
 claude-session-tidy keep <id...> [--dry-run] [--json]
@@ -102,7 +103,21 @@ Cleanup: 30 days without a change (cleanupPeriodDays is not set, so Claude Code'
 - `--idle 14` keeps sessions with **no activity** in the last 14 days, counted from now by each transcript's newest timestamp. It filters before `--limit` and combines with `--all`, `--project`, `--sort`, `--due`, `--title` and `--since` (for example, `--since 30 --idle 7` lists sessions active between 7 and 30 days ago). Text and markdown headers show the matched and shown counts; JSON adds `idle` and `matched` only when the filter is used. No matches is a successful empty report. The number of days must be a whole number of 1 or more.
 - `--sort size` puts the biggest first and `--sort prompts` the longest conversations; `--limit 15` shows 15. `--markdown` prints the compact table the skill uses (at most 40 rows).
 
+### rename
+
+```text
+$ claude-session-tidy rename 7ec217ec "Stripe webhooks, second attempt"
+Renamed 7ec217ec to "Stripe webhooks, second attempt" (was "Add Stripe webhooks").
+
+$ claude-session-tidy rename 7ec217ec "Stripe webhooks, second attempt" --dry-run
+Would rename 7ec217ec to "Stripe webhooks, second attempt".
+Nothing was changed (--dry-run).
+```
+
+`rename` sets the title `list` and `claude --resume` show for a session, writing the name the same two ways Claude Code's `/rename` does: appending a `custom-title` record (`{"type":"custom-title","customTitle":"..."}`) to the transcript, and writing `projects/<slug>/<id>/custom-title.json` (`{"customTitle":"..."}`). An ambiguous or unknown id is refused and nothing is written, an empty or whitespace-only title is an error, and `--dry-run` changes nothing.
+
 ### delete and restore
+
 
 ```text
 $ claude-session-tidy delete 75372192

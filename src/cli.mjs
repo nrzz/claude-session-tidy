@@ -9,9 +9,9 @@ import { keepSessions, readKeep, refreshKept, unkeepSessions } from "./keep.mjs"
 import { withActivity, withScan, withSize, withSweep } from "./overview.mjs";
 import {
   MARKDOWN_ROW_CAP, renderEmptyTrash, renderInit, renderKept, renderListMarkdown, renderListText, renderMoved, renderRefresh,
-  renderRestored, renderTidy, renderTrashList, renderUninstall, renderUnkept,
+  renderRenamed, renderRestored, renderTidy, renderTrashList, renderUninstall, renderUnkept,
 } from "./render.mjs";
-import { findSessions, makeStore, projectName, resolveIds, shortIds } from "./sessions.mjs";
+import { findSessions, makeStore, projectName, renameSession, resolveIds, shortIds } from "./sessions.mjs";
 import { ACTIVE_MS, findCandidates } from "./tidy.mjs";
 import { deleteSessions, emptyTrash, listTrash, restoreSession } from "./trash.mjs";
 import { DAY, UserError, cmp, fail, isoOf, makeColors, plural } from "./util.mjs";
@@ -23,6 +23,7 @@ import { REPO_URL, VERSION } from "./version.mjs";
 
 export const COMMANDS = {
   list: { run: cmdList, bool: ["all", "json", "markdown"], value: ["project", "sort", "limit", "due", "title", "since", "idle"] },
+  rename: { run: cmdRename, bool: ["dry-run", "json"], value: [] },
   delete: { run: cmdDelete, bool: ["dry-run", "json"], value: [] },
   restore: { run: cmdRestore, bool: ["dry-run", "json"], value: [] },
   keep: { run: cmdKeep, bool: ["dry-run", "json"], value: [] },
@@ -33,6 +34,7 @@ export const COMMANDS = {
   init: { run: cmdInit, bool: ["dry-run", "json"], value: [] },
   uninstall: { run: cmdUninstall, bool: ["dry-run", "json"], value: [] },
 };
+
 
 function parseArgs(argv, spec) {
   const args = { _: [] };
@@ -187,8 +189,41 @@ function describe(env) {
 const shortOfAll = (ids) => { const m = shortIds(ids); return (id) => m.get(id) || id.slice(0, 8); };
 
 // ---------------------------------------------------------------------------------------------
+// rename
+// ---------------------------------------------------------------------------------------------
+
+async function cmdRename(args, ctx) {
+  const { env } = ctx;
+  if (!args._.length) fail("Which session? Give its id (claude-session-tidy list shows them).");
+  if (args._.length < 2) fail("rename needs a new title: claude-session-tidy rename <id> <title>.");
+  const idRef = args._[0];
+  const title = args._.slice(1).join(" ").trim();
+  if (!title) fail("rename needs a non-empty title.");
+  const resolved = resolveIds(env, [idRef])[0];
+  const desc = describe(env)(resolved);
+  const previous = desc.title && desc.title !== "(untitled session)" ? desc.title : null;
+  const dryRun = !!args["dry-run"];
+  renameSession(env, resolved, title, { dryRun });
+  const result = {
+    ok: true,
+    dryRun,
+    id: resolved.id,
+    short: resolved.id.slice(0, 8),
+    title,
+    previous,
+  };
+  if (args.json) {
+    ctx.out(`${JSON.stringify(result, null, 2)}\n`);
+    return 0;
+  }
+  ctx.say(renderRenamed(result, { dryRun, color: ctx.c }));
+  return 0;
+}
+
+// ---------------------------------------------------------------------------------------------
 // delete, restore, tidy, empty-trash
 // ---------------------------------------------------------------------------------------------
+
 
 function noteRecent(resolved, ctx) {
   const recent = resolved.filter((r) => r.copies.some((c) => ctx.now - c.mtimeMs < ACTIVE_MS));
@@ -331,6 +366,7 @@ const helpText = (c) => `${c.bold("claude-session-tidy")} ${VERSION}: list, dele
 
 ${c.bold("Look")}
   claude-session-tidy list [--all | --project <dir>] [--sort age|size|prompts] [--due <days>] [--title <text>] [--since <days>] [--idle <days>] [--limit <n>] [--json | --markdown]
+  claude-session-tidy rename <id> <title> [--dry-run] [--json] set a session's title
 
 ${c.bold("Delete, with a way back")}
   claude-session-tidy delete <id...> [--dry-run] [--json]      move sessions to the trash
