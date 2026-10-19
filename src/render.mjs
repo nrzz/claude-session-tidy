@@ -238,3 +238,75 @@ export function renderRenamed(r, { dryRun, color: c = {} }) {
   if (dryRun) lines.push(dim("Nothing was changed (--dry-run)."));
   return lines.join("\n");
 }
+
+export function renderShow(m, { color: c = {} }) {
+  const cyan = c.cyan || ((s) => s);
+  const green = c.green || ((s) => s);
+  const red = c.red || ((s) => s);
+  const lines = [];
+
+  // Line 1: <id>   <title>
+  lines.push(`${cyan(m.id)}   ${m.title || "(untitled session)"}`);
+
+  // Line 2: Project    ~/code/shop
+  lines.push(`Project    ${m.project}`);
+
+  // Line 3: Started    2026-10-12 09:14   Last activity  2026-10-18 17:02   Prompts  14
+  const started = m.started ? localStamp(m.started) : (m.firstActivity ? localStamp(Date.parse(m.firstActivity)) : "-");
+  const lastActive = localStamp(m.lastActiveMs || (m.lastActivity ? Date.parse(m.lastActivity) : 0));
+  lines.push(`Started    ${started.padEnd(16)}   Last activity  ${lastActive.padEnd(16)}   Prompts  ${m.prompts}`);
+
+  // Line 4: Size       1.9 MB: transcript 1.2 MB, tool results 540 KB (31 files), subagents 120 KB (2), file history 48 KB (6)
+  const parts = [`transcript ${size(m.size.transcript)}`];
+  if (m.sizeBreakdown?.toolResults?.bytes > 0) {
+    parts.push(`tool results ${size(m.sizeBreakdown.toolResults.bytes)} (${plural(m.sizeBreakdown.toolResults.files, "file")})`);
+  }
+  if (m.sizeBreakdown?.subagents?.bytes > 0) {
+    parts.push(`subagents ${size(m.sizeBreakdown.subagents.bytes)} (${m.sizeBreakdown.subagents.files})`);
+  }
+  if (m.sizeBreakdown?.fileHistory?.bytes > 0) {
+    parts.push(`file history ${size(m.sizeBreakdown.fileHistory.bytes)} (${m.sizeBreakdown.fileHistory.files})`);
+  }
+  if (m.sizeBreakdown?.extras?.length) {
+    for (const extra of m.sizeBreakdown.extras) {
+      if (extra.bytes > 0) parts.push(`${extra.label} ${size(extra.bytes)} (${plural(extra.files, "file")})`);
+    }
+  }
+  lines.push(`Size       ${size(m.size.total)}: ${parts.join(", ")}`);
+
+  // Line 5: Kept       yes, since 2026-10-15 (refresh due 2026-11-13)
+  if (m.kept.kept) {
+    const sincePart = m.kept.since ? `, since ${m.kept.since.slice(0, 10)}` : "";
+    const dueDay = m.kept.refreshDue ? m.kept.refreshDue.slice(0, 10) : (m.kept.refreshDueMs ? localDay(m.kept.refreshDueMs) : "");
+    const duePart = dueDay ? ` (refresh due ${dueDay})` : "";
+    lines.push(`Kept       ${green("yes")}${sincePart}${duePart}`);
+  } else {
+    lines.push("Kept       no");
+  }
+
+  // Line 6: Cleanup    scheduled for 2026-11-17 (30 days without a change; cleanupPeriodDays is not set)
+  let cleanupText = "";
+  if (m.sweep.state === "scheduled") {
+    cleanupText = `scheduled for ${m.sweep.day} (${m.sweep.retentionDesc})`;
+  } else if (m.sweep.state === "due") {
+    cleanupText = `${red("due")} (${m.sweep.retentionDesc})`;
+  } else if (m.sweep.state === "exempt") {
+    cleanupText = "exempt (started by Claude Desktop)";
+  } else if (m.sweep.state === "paused") {
+    cleanupText = `paused (${m.sweep.retentionDesc})`;
+  }
+  lines.push(`Cleanup    ${cleanupText}`);
+
+  // Line 7: Files
+  lines.push("Files");
+  for (const f of m.files) {
+    if (f.kind === "dir") {
+      lines.push(`  ${f.path}/   (${plural(f.count ?? f.files, "file")})`);
+    } else {
+      lines.push(`  ${f.path}`);
+    }
+  }
+
+  return lines.join("\n");
+}
+

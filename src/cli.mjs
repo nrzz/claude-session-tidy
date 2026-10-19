@@ -2,19 +2,19 @@
 // keep, unkeep, refresh, tidy, empty-trash, init, uninstall. It reads and writes files under Claude Code's
 // config folder only, runs no model and makes no network request.
 import path from "node:path";
-import { claudeDir, keepFile, projectsDir, readRetention, trashRoot } from "./config.mjs";
+import { claudeDir, displayPath, keepFile, projectsDir, readRetention, trashRoot } from "./config.mjs";
 import { logError } from "./errorlog.mjs";
 import { hookStatus, init, uninstall } from "./install.mjs";
 import { keepSessions, readKeep, refreshKept, unkeepSessions } from "./keep.mjs";
-import { withActivity, withScan, withSize, withSweep } from "./overview.mjs";
+import { withActivity, withMeta, withScan, withSize, withSweep } from "./overview.mjs";
 import {
   MARKDOWN_ROW_CAP, renderEmptyTrash, renderInit, renderKept, renderListMarkdown, renderListText, renderMoved, renderRefresh,
-  renderRenamed, renderRestored, renderTidy, renderTrashList, renderUninstall, renderUnkept,
+  renderRenamed, renderRestored, renderShow, renderTidy, renderTrashList, renderUninstall, renderUnkept,
 } from "./render.mjs";
-import { findSessions, makeStore, projectName, renameSession, resolveIds, shortIds } from "./sessions.mjs";
+import { allCompanions, findSessions, makeStore, projectName, renameSession, resolveIds, shortIds, sized } from "./sessions.mjs";
 import { ACTIVE_MS, findCandidates } from "./tidy.mjs";
 import { deleteSessions, emptyTrash, listTrash, restoreSession } from "./trash.mjs";
-import { DAY, UserError, cmp, fail, isoOf, makeColors, plural } from "./util.mjs";
+import { DAY, UserError, cmp, fail, isoOf, localDay, localStamp, makeColors, measure, plural, statOf } from "./util.mjs";
 import { REPO_URL, VERSION } from "./version.mjs";
 
 // ---------------------------------------------------------------------------------------------
@@ -23,6 +23,7 @@ import { REPO_URL, VERSION } from "./version.mjs";
 
 export const COMMANDS = {
   list: { run: cmdList, bool: ["all", "json", "markdown", "kept"], value: ["project", "sort", "limit", "due", "title", "since", "idle"] },
+  show: { run: cmdShow, bool: ["json"], value: [] },
   rename: { run: cmdRename, bool: ["dry-run", "json"], value: [] },
   delete: { run: cmdDelete, bool: ["dry-run", "json"], value: [] },
   restore: { run: cmdRestore, bool: ["dry-run", "json"], value: [] },
@@ -193,6 +194,192 @@ function describe(env) {
 
 // The short form of an id, long enough to tell the sessions apart that are on the screen.
 const shortOfAll = (ids) => { const m = shortIds(ids); return (id) => m.get(id) || id.slice(0, 8); };
+
+// ---------------------------------------------------------------------------------------------
+// show
+// ---------------------------------------------------------------------------------------------
+
+async function cmdShow(args, ctx) {
+  const { env, now } = ctx;
+  if (!args._.length) fail("Which session? Give its id (claude-session-tidy list shows them).");
+  if (args._.length > 1) fail("show takes one session at a time.");
+
+  const ref = args._[0];
+  const resolved = resolveIds(env, [ref])[0];
+  const copies = resolved.copies.slice().sort((a, b) => b.mtimeMs - a.mtimeMs);
+  const primary = copies[0];
+  withMeta(primary);
+  withActivity(primary);
+  withScan(primary);
+
+  const retention = readRetention(env, { projectDir: primary.cwd || ctx.cwd });
+  withSweep(primary, retention, now);
+
+  const keep = readKeep(env);
+  const keptInfo = keep.kept[resolved.id];
+  const isKept = Boolean(keptInfo);
+
+  let refreshDueMs = null;
+  if (isKept && primary.sweep.state !== "exempt" && !retention.paused) {
+    refreshDueMs = primary.mtimeMs + Math.floor((retention.days * DAY) / 2);
+  }
+
+  const store = makeStore(env);
+  const s = sized(allCompanions(store, resolved.copies));
+
+  let transcriptBytes = 0;
+  for (const c of resolved.copies) transcriptBytes += (c.bytes || 0);
+
+  let toolResultsBytes = 0;
+  let toolResultsFiles = 0;
+  let subagentsBytes = 0;
+  let subagentsFiles = 0;
+  for (const c of resolved.copies) {
+    const trDir = path.join(c.dir, resolved.id, "tool-results");
+    const trStat = statOf(trDir);
+    if (trStat && trStat.isDirectory()) {
+      const m = measure(trDir);
+      toolResultsBytes += m.bytes;
+      toolResultsFiles += m.files;
+    }
+    const saDir = path.join(c.dir, resolved.id, "subagents");
+    const saStat = statOf(saDir);
+    if (saStat && saStat.isDirectory()) {
+      const m = measure(saDir);
+      subagentsBytes += m.bytes;
+      subagentsFiles += m.files;
+    }
+  }
+
+  let fileHistoryBytes = 0;
+  let fileHistoryFiles = 0;
+  const fhDir = path.join(claudeDir(env), "file-history", resolved.id);
+  const fhStat = statOf(fhDir);
+  if (fhStat && fhStat.isDirectory()) {
+    const m = measure(fhDir);
+    fileHistoryBytes += m.bytes;
+    fileHistoryFiles += m.files;
+  }
+
+  const sizeObj = {
+    total: s.bytes,
+    transcript: transcriptBytes,
+    toolResults: toolResultsBytes,
+    subagents: subagentsBytes,
+    fileHistory: fileHistoryBytes,
+  };
+
+  const sizeBreakdown = {
+    transcript: { bytes: transcriptBytes },
+    toolResults: { bytes: toolResultsBytes, files: toolResultsFiles },
+    subagents: { bytes: subagentsBytes, files: subagentsFiles },
+    fileHistory: { bytes: fileHistoryBytes, files: fileHistoryFiles },
+    extras: [],
+  };
+
+  for (const extraDir of ["uploads", "tasks", "session-env"]) {
+    const ePath = path.join(claudeDir(env), extraDir, resolved.id);
+    const eStat = statOf(ePath);
+    if (eStat && eStat.isDirectory()) {
+      const m = measure(ePath);
+      if (m.bytes > 0) {
+        const label = extraDir.replace("-", " ");
+        sizeBreakdown.extras.push({ label, bytes: m.bytes, files: m.files });
+        const camel = extraDir === "session-env" ? "sessionEnv" : extraDir;
+        sizeObj[camel] = m.bytes;
+      }
+    }
+  }
+
+  const filesList = s.items.map((item) => ({
+    path: displayPath(item.abs, env),
+    kind: item.kind,
+    bytes: item.bytes,
+    count: item.kind === "dir" ? item.files : undefined,
+    files: item.files,
+  }));
+
+  const cwds = [...new Set(copies.map((c) => withMeta(c).cwd).filter(Boolean))];
+  const projectDisplay = cwds.length ? cwds.map((d) => displayPath(d, env)).join(", ") : projectName(primary);
+
+  let retentionDesc = "";
+  if (retention.paused) {
+    retentionDesc = `${retention.paused.file} ${retention.paused.reason}`;
+  } else if (retention.source === "default") {
+    retentionDesc = `${retention.days} days without a change; cleanupPeriodDays is not set`;
+  } else {
+    retentionDesc = `${retention.days} days without a change; cleanupPeriodDays ${retention.days} in ${displayPath(retention.file, env)}`;
+  }
+
+  const sweepObj = {
+    state: primary.sweep.state,
+    day: primary.sweep.dueMs ? localDay(primary.sweep.dueMs) : null,
+    days: retention.days,
+    source: retention.source,
+    dueMs: primary.sweep.dueMs,
+    retentionDesc,
+  };
+
+  const keptObj = isKept
+    ? {
+        kept: true,
+        since: keptInfo.since || undefined,
+        refreshDue: refreshDueMs ? isoOf(refreshDueMs) : undefined,
+        refreshDueMs,
+      }
+    : { kept: false };
+
+  const model = {
+    id: resolved.id,
+    title: primary.title || "",
+    project: projectDisplay,
+    started: primary.started,
+    firstActivity: primary.started ? isoOf(primary.started) : "",
+    lastActivity: isoOf(primary.lastActiveMs),
+    lastActiveMs: primary.lastActiveMs,
+    prompts: primary.prompts ?? 0,
+    size: sizeObj,
+    sizeBreakdown,
+    kept: keptObj,
+    sweep: sweepObj,
+    files: filesList,
+  };
+
+  if (args.json) {
+    const jsonDoc = {
+      ok: true,
+      id: model.id,
+      title: model.title,
+      project: projectName(primary),
+      firstActivity: model.firstActivity,
+      lastActivity: model.lastActivity,
+      prompts: model.prompts,
+      size: sizeObj,
+      kept: {
+        kept: isKept,
+        ...(isKept && keptInfo.since ? { since: keptInfo.since } : {}),
+        ...(isKept && refreshDueMs ? { refreshDue: isoOf(refreshDueMs) } : {}),
+      },
+      sweep: {
+        state: sweepObj.state,
+        day: sweepObj.day,
+        days: sweepObj.days,
+        source: sweepObj.source,
+      },
+      files: filesList.map((f) => ({
+        path: f.path,
+        kind: f.kind,
+        bytes: f.bytes,
+        ...(f.kind === "dir" ? { count: f.count } : {}),
+      })),
+    };
+    ctx.out(`${JSON.stringify(jsonDoc, null, 2)}\n`);
+    return 0;
+  }
+
+  ctx.say(renderShow(model, { color: ctx.c }));
+  return 0;
+}
 
 // ---------------------------------------------------------------------------------------------
 // rename
@@ -372,6 +559,7 @@ const helpText = (c) => `${c.bold("claude-session-tidy")} ${VERSION}: list, dele
 
 ${c.bold("Look")}
   claude-session-tidy list [--all | --project <dir>] [--sort age|size|prompts] [--due <days>] [--title <text>] [--since <days>] [--idle <days>] [--kept] [--limit <n>] [--json | --markdown]
+  claude-session-tidy show <id> [--json]                       everything list knows about one session, with its files
   claude-session-tidy rename <id> <title> [--dry-run] [--json] set a session's title
 
 ${c.bold("Delete, with a way back")}
