@@ -4,6 +4,8 @@ All notable changes to claude-session-tidy are written here. The format follows 
 
 ## [Unreleased]
 
+- Add `list --kept`: only the sessions on the keep list (`keep.json`). It filters before `--limit` and combines with `--all`, `--project`, `--sort`, `--due`, `--title`, `--since` and `--idle`. Text and markdown headers show matching, shown and total counts (`(3 kept, of 41)`, or with other filters `(2 kept, matching "stripe", of 41)`); JSON adds `kept: true` and `matched` only when the filter is used. No matches is a successful empty report. When the keep list is invalid, `--kept` is refused with an error (exit 1).
+
 ## [1.4.0] - 2026-10-19
 
 - Add `rename <id> <title>`: set a session's title from outside Claude Code, the way `/rename` does inside it: a `custom-title` record appended to the transcript and `custom-title.json` in the session's folder (and `sessions-index.json` brought along when there is one). The id follows the rules of `delete` and `keep` (a full id or an unambiguous prefix; ambiguous or unknown ids are refused and nothing is written), an empty title is a usage error, `--dry-run` changes nothing, `--json` gives the result. Checked against Claude Code 2.1.299: `claude -p --resume "<new title>"` resumes the renamed session with its history, from either of the two places alone, and the old title no longer does.
