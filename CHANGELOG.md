@@ -4,8 +4,11 @@ All notable changes to claude-session-tidy are written here. The format follows 
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-10-19
+
+- Add `rename <id> <title>`: set a session's title from outside Claude Code, the way `/rename` does inside it: a `custom-title` record appended to the transcript and `custom-title.json` in the session's folder (and `sessions-index.json` brought along when there is one). The id follows the rules of `delete` and `keep` (a full id or an unambiguous prefix; ambiguous or unknown ids are refused and nothing is written), an empty title is a usage error, `--dry-run` changes nothing, `--json` gives the result. Checked against Claude Code 2.1.299: `claude -p --resume "<new title>"` resumes the renamed session with its history, from either of the two places alone, and the old title no longer does.
 - Add `list --idle <days>`: the sessions whose last activity is older than N days, counted from now by the newest timestamp in each transcript rather than the file's modification time. It filters before `--limit`, combines with `--all`, `--project`, `--sort`, `--due`, `--title` and `--since` (for example, `--since 30 --idle 7` lists sessions active between 7 and 30 days ago), and works in text, JSON and markdown reports. Headers show matching, shown and total counts; JSON adds `idle` and `matched` only when the filter is used. No matches is a successful empty report; a value that is not a whole number of 1 or more is a usage error with exit code 1.
-- Add `rename <id> <title>`: set a session's title from outside Claude Code, writing both the `custom-title` transcript record and `custom-title.json` in the session's folder, and updating `sessions-index.json` when present. Supports `--dry-run` and `--json`.
+- Contributed by [@yoreva-01](https://github.com/yoreva-01) in [#11](https://github.com/nrzz/claude-session-tidy/pull/11) (for [#4](https://github.com/nrzz/claude-session-tidy/issues/4)) and [#10](https://github.com/nrzz/claude-session-tidy/pull/10) (for the good first issue [#9](https://github.com/nrzz/claude-session-tidy/issues/9)); the real-binary check of the title is the maintainer's.
 
 ## [1.3.0] - 2026-10-19
 
@@ -33,7 +36,8 @@ All notable changes to claude-session-tidy are written here. The format follows 
 - A plugin `session-tidy` with one user-only skill, `/session-tidy:list`, and the same hook.
 - Checked against Claude Code 2.1.295: the cleanup goes by a file's modification time and not the timestamps inside it; it skips sessions started by Claude Desktop; it takes a session's folder along but leaves `file-history/`, `session-env/`, `uploads/` and `tasks/` behind; a touched session survives it; a deleted session cannot be resumed and a restored one resumes with its whole history. The checks run against the real binary in CI (`E2E_CLAUDE`), weekly.
 
-[Unreleased]: https://github.com/nrzz/claude-session-tidy/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/nrzz/claude-session-tidy/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/nrzz/claude-session-tidy/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/nrzz/claude-session-tidy/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/nrzz/claude-session-tidy/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/nrzz/claude-session-tidy/compare/v1.0.1...v1.1.0

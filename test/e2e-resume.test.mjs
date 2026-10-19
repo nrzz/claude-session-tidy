@@ -144,3 +144,45 @@ test("rename sets the session title seen by list and creates custom-title files"
 
   await api.close();
 });
+
+test("rename's title is the one claude -p --resume <title> finds, from either place it is written", { skip: skip(), timeout: 240000 }, async () => {
+  // Claude Code 2.1.299 (19 Oct 2026): in print mode --resume takes a title as well as an id, so the title the binary sees can be checked.
+  const sb = sandbox("rename-title");
+  const api = await fakeApi();
+  try {
+    const first = await runClaude(sb, api, ["-p", "PROMPT-ONE remember the word kumquat", "--session-id", ID, "--output-format", "json"]);
+    assert.equal(first.code, 0, first.err);
+    const transcript = path.join(sb.proj, `${ID}.jsonl`);
+    const titleJson = path.join(sb.proj, ID, "custom-title.json");
+    const resumeBy = async (title) => {
+      const n = api.requests.length;
+      const r = await runClaude(sb, api, ["-p", "PROMPT-NEXT what was the word?", "--resume", title, "--output-format", "json"]);
+      let id = null; try { id = JSON.parse(r.out).session_id; } catch {}
+      return { code: r.code, id, history: api.requests.length > n && messagesOf(api.requests[n]).includes("PROMPT-ONE") };
+    };
+    const unknown = await resumeBy("NO-SUCH-TITLE");
+    assert.notEqual(unknown.code, 0, "an unknown title is refused");
+    assert.equal(api.requests.length, 1, "and asked the model nothing");
+
+    const renamed = sb.tidy(["rename", ID.slice(0, 8), "RENAMED-TITLE-XYZ", "--json"]);
+    assert.equal(renamed.code, 0, renamed.all);
+    const both = await resumeBy("RENAMED-TITLE-XYZ");
+    assert.deepEqual([both.code, both.id, both.history], [0, ID, true], "the new title resumes the session with its history");
+    const old = await resumeBy("PROMPT-ONE remember the word kumquat");
+    assert.notEqual(old.code, 0, "the old title, the first prompt, no longer does");
+
+    // which of the two places the binary reads: either one is enough
+    const jsonText = fs.readFileSync(titleJson, "utf8");
+    fs.rmSync(titleJson);
+    const recordOnly = await resumeBy("RENAMED-TITLE-XYZ");
+    assert.deepEqual([recordOnly.code, recordOnly.id], [0, ID], "the transcript record alone is read");
+    fs.writeFileSync(titleJson, jsonText);
+    const lines = fs.readFileSync(transcript, "utf8").split("\n");
+    fs.writeFileSync(transcript, lines.filter((l) => !l.includes('"type":"custom-title"')).join("\n"));
+    const jsonOnly = await resumeBy("RENAMED-TITLE-XYZ");
+    assert.deepEqual([jsonOnly.code, jsonOnly.id], [0, ID], "custom-title.json alone is read");
+    fs.rmSync(titleJson);
+    const neither = await resumeBy("RENAMED-TITLE-XYZ");
+    assert.notEqual(neither.code, 0, "with neither, the title is unknown again");
+  } finally { await api.close(); }
+});
