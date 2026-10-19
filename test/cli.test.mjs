@@ -26,7 +26,7 @@ test("help is printed for no arguments, help, --help and -h, and names every com
   for (const argv of [[], ["help"], ["--help"], ["-h"], ["list", "--help"], ["delete", "-h"], ["tidy", "--help"]]) {
     const r = await run(argv, w);
     assert.equal(r.code, 0, argv.join(" "));
-    for (const part of ["claude-session-tidy list", "claude-session-tidy delete", "claude-session-tidy restore", "claude-session-tidy keep", "claude-session-tidy unkeep", "claude-session-tidy refresh", "claude-session-tidy tidy", "claude-session-tidy empty-trash", "claude-session-tidy init", "claude-session-tidy uninstall", "--sort age|size|prompts", "--older <days>", "--markdown", "--dry-run", "--yes", "--quiet", "$CLAUDE_CONFIG_DIR", "github.com/nrzz/claude-session-tidy", "Nothing is sent anywhere"]) {
+    for (const part of ["claude-session-tidy list", "claude-session-tidy rename", "claude-session-tidy delete", "claude-session-tidy restore", "claude-session-tidy keep", "claude-session-tidy unkeep", "claude-session-tidy refresh", "claude-session-tidy tidy", "claude-session-tidy empty-trash", "claude-session-tidy init", "claude-session-tidy uninstall", "--sort age|size|prompts", "--older <days>", "--markdown", "--dry-run", "--yes", "--quiet", "$CLAUDE_CONFIG_DIR", "github.com/nrzz/claude-session-tidy", "Nothing is sent anywhere"]) {
       assert.ok(r.out.includes(part), `${argv.join(" ")}: ${part}`);
     }
   }

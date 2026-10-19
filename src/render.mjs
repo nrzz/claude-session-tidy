@@ -221,3 +221,12 @@ export function renderUninstall(r, { color: c }) {
   return lines.join("\n");
 }
 
+export function renderRenamed(r, { dryRun, color: c = {} }) {
+  const bold = c.bold || ((s) => s);
+  const dim = c.dim || ((s) => s);
+  const verb = dryRun ? "Would rename" : "Renamed";
+  const was = r.previous && r.previous !== r.title ? ` (was "${oneLine(r.previous, 60)}")` : "";
+  const lines = [bold(`${verb} ${r.short} to "${oneLine(r.title, 60)}"${was}.`)];
+  if (dryRun) lines.push(dim("Nothing was changed (--dry-run)."));
+  return lines.join("\n");
+}

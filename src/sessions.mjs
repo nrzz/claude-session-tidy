@@ -208,3 +208,63 @@ export function projectFolderExists(cwd, platform = process.platform) {
   if (win && root.startsWith("\\\\")) return null; // a network share: slow, and it may simply be offline
   return fs.existsSync(cwd);
 }
+
+// Renames a session the same two ways Claude Code's /rename does: appending a custom-title record to the
+// transcript, and writing custom-title.json in the session's folder. Also updates sessions-index.json if present.
+export function renameSession(env, resolved, title, { dryRun = false } = {}) {
+  if (dryRun) return;
+  const record = JSON.stringify({ type: "custom-title", customTitle: title });
+  const titleJson = `${JSON.stringify({ customTitle: title })}\n`;
+  for (const copy of resolved.copies) {
+    if (fs.existsSync(copy.file)) {
+      const st = statOf(copy.file);
+      let prefix = "";
+      if (st && st.size > 0) {
+        const fd = fs.openSync(copy.file, "r");
+        try {
+          const buf = Buffer.alloc(1);
+          fs.readSync(fd, buf, 0, 1, st.size - 1);
+          if (buf[0] !== 0x0a) prefix = "\n";
+        } finally {
+          fs.closeSync(fd);
+        }
+      }
+      fs.appendFileSync(copy.file, `${prefix}${record}\n`);
+    }
+    const sessionFolder = path.join(copy.dir, resolved.id);
+    fs.mkdirSync(sessionFolder, { recursive: true });
+    fs.writeFileSync(path.join(sessionFolder, "custom-title.json"), titleJson);
+
+    const indexPath = path.join(copy.dir, "sessions-index.json");
+    if (fs.existsSync(indexPath)) {
+      try {
+        const content = fs.readFileSync(indexPath, "utf8");
+        const index = tryParse(content);
+        if (index) {
+          let changed = false;
+          const touchEntry = (e) => {
+            if (e && (e.sessionId === resolved.id || e.id === resolved.id)) {
+              e.customTitle = title;
+              changed = true;
+            }
+          };
+          if (Array.isArray(index)) {
+            index.forEach(touchEntry);
+          } else if (typeof index === "object") {
+            if (index[resolved.id]) {
+              index[resolved.id].customTitle = title;
+              changed = true;
+            }
+            if (Array.isArray(index.entries)) index.entries.forEach(touchEntry);
+            if (Array.isArray(index.sessions)) index.sessions.forEach(touchEntry);
+          }
+          if (changed) {
+            fs.writeFileSync(indexPath, `${JSON.stringify(index, null, 2)}\n`);
+          }
+        }
+      } catch {
+        // Corrupt or unreadable index is left alone
+      }
+    }
+  }
+}
