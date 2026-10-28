@@ -4,6 +4,9 @@ All notable changes to claude-session-tidy are written here. The format follows 
 
 ## [Unreleased]
 
+- Add `show <id>`: everything `list` knows about one session, with its files and folders (the ones `delete` would move), each with its file count or size. `<id>` is a session id or an unambiguous prefix of 6 or more characters; an ambiguous or unknown id is refused (exit 1). `--json` gives one document (`{ ok, id, title, project, firstActivity, lastActivity, prompts, size, kept, sweep, files }`).
+- Contributed by [@yoreva-01](https://github.com/yoreva-01) for the good first issue [#14](https://github.com/nrzz/claude-session-tidy/issues/14).
+
 ## [1.5.0] - 2026-10-19
 
 - Add `list --kept`: only the sessions on the keep list (`keep.json`). It filters before `--limit` and combines with `--all`, `--project`, `--sort`, `--due`, `--title`, `--since` and `--idle`. Text and markdown headers show matching, shown and total counts (`(3 kept, of 41)`, or with other filters `(2 kept, matching "stripe", of 41)`); JSON adds `kept: true` and `matched` only when the filter is used. No matches is a successful empty report. When the keep list is invalid, `--kept` is refused with an error (exit 1).

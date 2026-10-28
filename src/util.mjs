@@ -33,8 +33,9 @@ export function size(bytes) {
 
 // Local time for the person at the keyboard: 2026-10-15 09:30. JSON output uses UTC ISO strings instead.
 export function localStamp(ms) {
-  if (!Number.isFinite(ms)) return "";
-  const d = new Date(ms);
+  const n = typeof ms === "string" ? Date.parse(ms) : ms;
+  if (!Number.isFinite(n)) return "";
+  const d = new Date(n);
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
 export const localDay = (ms) => localStamp(ms).slice(0, 10);
@@ -45,7 +46,7 @@ export function fileStamp(ms = Date.now()) {
   return `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}-${pad2(d.getHours())}${pad2(d.getMinutes())}${pad2(d.getSeconds())}`;
 }
 
-export const isoOf = (ms) => (Number.isFinite(ms) ? new Date(ms).toISOString() : "");
+export const isoOf = (ms) => (typeof ms === "string" && ms ? ms : (Number.isFinite(ms) ? new Date(ms).toISOString() : ""));
 
 // ---------------------------------------------------------------------------------------------
 // Text that came from a transcript and is about to be printed: titles, prompts, paths.
