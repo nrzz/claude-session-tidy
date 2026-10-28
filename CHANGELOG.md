@@ -4,8 +4,10 @@ All notable changes to claude-session-tidy are written here. The format follows 
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-10-28
+
 - Add `show <id>`: everything `list` knows about one session, with its files and folders (the ones `delete` would move), each with its file count or size. `<id>` is a session id or an unambiguous prefix of 6 or more characters; an ambiguous or unknown id is refused (exit 1). `--json` gives one document (`{ ok, id, title, project, firstActivity, lastActivity, prompts, size, kept, sweep, files }`).
-- Contributed by [@yoreva-01](https://github.com/yoreva-01) for the good first issue [#14](https://github.com/nrzz/claude-session-tidy/issues/14).
+- Contributed by [@yoreva-01](https://github.com/yoreva-01) in [#15](https://github.com/nrzz/claude-session-tidy/pull/15), for the good first issue [#14](https://github.com/nrzz/claude-session-tidy/issues/14).
 
 ## [1.5.0] - 2026-10-19
 
@@ -44,7 +46,8 @@ All notable changes to claude-session-tidy are written here. The format follows 
 - A plugin `session-tidy` with one user-only skill, `/session-tidy:list`, and the same hook.
 - Checked against Claude Code 2.1.295: the cleanup goes by a file's modification time and not the timestamps inside it; it skips sessions started by Claude Desktop; it takes a session's folder along but leaves `file-history/`, `session-env/`, `uploads/` and `tasks/` behind; a touched session survives it; a deleted session cannot be resumed and a restored one resumes with its whole history. The checks run against the real binary in CI (`E2E_CLAUDE`), weekly.
 
-[Unreleased]: https://github.com/nrzz/claude-session-tidy/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/nrzz/claude-session-tidy/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/nrzz/claude-session-tidy/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/nrzz/claude-session-tidy/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/nrzz/claude-session-tidy/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/nrzz/claude-session-tidy/compare/v1.2.0...v1.3.0
