@@ -78,6 +78,7 @@ export function fakeApi({ reply = (j, n) => textReply(j, n, "ANSWER-ONE"), delay
   const requests = [];
   const server = createServer((req, res) => {
     let body = "";
+    req.setEncoding("utf8"); // so a character split across two chunks still decodes
     req.on("data", (c) => { body += c; });
     req.on("end", () => {
       if (!req.url.includes("/v1/messages")) { res.writeHead(404); res.end("{}"); return; }
